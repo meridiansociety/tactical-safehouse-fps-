@@ -20,6 +20,7 @@ export class EnemyAI {
     this.position = spawn.position.clone();
     this.currentLevel = spawn.level;
     this.spawn = spawn;
+    this.mapData = mapData;
 
     this.hp = this.stats.hp;
     this.dead = false;
@@ -29,8 +30,8 @@ export class EnemyAI {
     this.fireCooldown = randRange(0.15, 0.5);
     this.reactionTimer = this.stats.reaction;
     this.searchTimer = 0;
-    this.tookRecentDamage = false;
     this.damageTimer = 0;
+    this.tookRecentDamage = false;
     this.lastKnownPlayerPos = null;
     this.lastSeenTime = -999;
     this.inCoverCooldown = 0;
@@ -47,9 +48,6 @@ export class EnemyAI {
     this.mesh.position.copy(this.position);
     this.mesh.userData.enemy = this;
     scene.add(this.mesh);
-
-    this.mapData = mapData;
-    this.height = 1.7;
   }
 
   createMesh() {
@@ -90,23 +88,30 @@ export class EnemyAI {
 
     this.fireCooldown -= dt;
     this.stateTimer -= dt;
+
     if (this.damageTimer > 0) {
       this.damageTimer -= dt;
     } else {
       this.tookRecentDamage = false;
     }
-    if (this.inCoverCooldown > 0) this.inCoverCooldown -= dt;
+
+    if (this.inCoverCooldown > 0) {
+      this.inCoverCooldown -= dt;
+    }
 
     const player = game.player;
     const playerDist = this.position.distanceTo(player.position);
+    const sameLevel = player.currentLevel === this.currentLevel;
+
     const canSeePlayer =
-      player.currentLevel === this.currentLevel &&
+      sameLevel &&
       playerDist <= this.maxSightDistance &&
-      game.hasLineOfSight(this.getHeadWorldPos(), game.getPlayerAimPoint(), this);
+      game.hasLineOfSight(this.getHeadWorldPos(), game.getPlayerAimPoint());
 
     if (canSeePlayer) {
       this.lastKnownPlayerPos = player.position.clone();
       this.lastSeenTime = performance.now() * 0.001;
+
       if (this.state !== "attack" && this.state !== "defuse") {
         this.state = "attack";
         this.reactionTimer = this.stats.reaction + randRange(0, 0.18);
@@ -146,7 +151,7 @@ export class EnemyAI {
         this.updateDefendBomb(dt, game);
         break;
       case "defuse":
-        this.updateDefuse(dt, game);
+        this.updateDefuse(dt, game, canSeePlayer);
         break;
       default:
         this.updateGuard(dt, game);
@@ -168,6 +173,7 @@ export class EnemyAI {
     if (this.position.distanceTo(target) < 0.9) {
       this.pathIndex = (this.pathIndex + 1) % this.patrol.length;
       this.stateTimer = randRange(0.4, 1.2);
+
       if (Math.random() < 0.2) {
         this.state = "guard";
       }
@@ -224,17 +230,21 @@ export class EnemyAI {
       }
     } else {
       const lostFor = performance.now() * 0.001 - this.lastSeenTime;
+
       if (this.lastKnownPlayerPos && lostFor < 4) {
         this.state = "search";
         this.searchTimer = 4;
       } else {
-        this.state = game.objective.bombPlanted ? "defendBomb" : (this.patrol.length ? "patrol" : "guard");
+        this.state = game.objective.bombPlanted
+          ? "defendBomb"
+          : (this.patrol.length ? "patrol" : "guard");
       }
     }
   }
 
   updateDefendBomb(dt, game) {
     const target = game.objective.bombSite.position;
+
     if (this.currentLevel !== game.objective.bombSite.level) {
       this.navigateToLevel(target, game, dt);
       return;
@@ -249,7 +259,7 @@ export class EnemyAI {
     this.moveToward(target.clone().add(orbitOffset), dt, game, 1.1);
   }
 
-  updateDefuse(dt, game) {
+  updateDefuse(dt, game, canSeePlayer) {
     const target = game.objective.bombSite.position;
 
     if (this.currentLevel !== game.objective.bombSite.level) {
@@ -257,10 +267,16 @@ export class EnemyAI {
       return;
     }
 
+    if (canSeePlayer) {
+      this.state = "attack";
+      return;
+    }
+
     if (this.position.distanceTo(target) > 1.35) {
       this.moveToward(target, dt, game);
     } else {
       game.objective.startDefuse(this);
+
       if (Math.random() < 0.1) {
         game.audio.playDefuse();
       }
@@ -294,11 +310,13 @@ export class EnemyAI {
       return;
     }
 
-    const dir = new THREE.Vector3().subVectors(target.position || target, this.position);
+    const targetPos = target.position ? target.position : target;
+    const dir = new THREE.Vector3().subVectors(targetPos, this.position);
     dir.y = 0;
-    const dist = dir.length();
 
+    const dist = dir.length();
     if (dist < 0.05) return;
+
     dir.normalize();
 
     const step = Math.min(dist, this.speed * speedScale * dt);
@@ -310,13 +328,19 @@ export class EnemyAI {
       const side = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(step);
       const attemptA = this.position.clone().add(side);
       const attemptB = this.position.clone().sub(side);
-      if (!game.testEnemyCollision(attemptA, this)) this.position.copy(attemptA);
-      else if (!game.testEnemyCollision(attemptB, this)) this.position.copy(attemptB);
+
+      if (!game.testEnemyCollision(attemptA, this)) {
+        this.position.copy(attemptA);
+      } else if (!game.testEnemyCollision(attemptB, this)) {
+        this.position.copy(attemptB);
+      }
     }
   }
 
   navigateToLevel(finalTarget, game, dt) {
-    const link = game.findBestTransferLink(this.currentLevel, game.getTargetLevelForPosition(finalTarget));
+    const targetLevel = game.getTargetLevelForPosition(finalTarget);
+    const link = game.findBestTransferLink(this.currentLevel, targetLevel);
+
     if (!link) return;
 
     const approachTarget = link.fromPos;
@@ -336,6 +360,7 @@ export class EnemyAI {
       0,
       randRange(-3.5, 3.5)
     );
+
     return this.position.clone().add(offset);
   }
 
@@ -344,6 +369,7 @@ export class EnemyAI {
     this.tookRecentDamage = true;
     this.damageTimer = 0.9;
     this.state = "attack";
+
     if (this.hp <= 0) {
       this.dead = true;
       this.mesh.visible = false;
