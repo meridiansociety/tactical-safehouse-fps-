@@ -23,17 +23,24 @@ class Game {
     this.scene.background = new THREE.Color(0x90a4b1);
     this.scene.fog = new THREE.Fog(0x90a4b1, 28, 135);
 
-    this.camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 300);
+    this.camera = new THREE.PerspectiveCamera(
+      80,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      300
+    );
 
     this.clock = new THREE.Clock();
     this.running = false;
     this.paused = false;
     this.pointerLocked = false;
+
     this.postPlantBeepTimer = 0;
     this.reinforcementTimer = 0;
     this.reinforcementSpawned = 0;
     this.maxReinforcements = 4;
     this.firePressedThisFrame = false;
+    this.reinforcementUsed = new Set();
 
     this.input = {
       fireHeld: false,
@@ -42,7 +49,12 @@ class Game {
     };
 
     this.mapData = buildMap(this.scene);
-    this.player = new Player(this.camera, this.mapData.playerSpawn, this.mapData.levelHeights);
+
+    this.player = new Player(
+      this.camera,
+      this.mapData.playerSpawn.clone(),
+      this.mapData.levelHeights
+    );
     this.player.setLevel(1);
     this.player.syncCamera();
 
@@ -87,12 +99,13 @@ class Game {
   }
 
   spawnInitialEnemies() {
-    this.enemies = this.mapData.enemySpawns.map(spawn => new EnemyAI(this.scene, spawn, spawn.role, this.mapData));
+    this.enemies = this.mapData.enemySpawns.map(
+      spawn => new EnemyAI(this.scene, spawn, spawn.role, this.mapData)
+    );
   }
 
   spawnReinforcement() {
     if (this.reinforcementSpawned >= this.maxReinforcements) return;
-    if (!this.reinforcementUsed) this.reinforcementUsed = new Set();
 
     const availableIndices = this.mapData.reinforcementSpawns
       .map((_, i) => i)
@@ -100,7 +113,9 @@ class Game {
 
     if (!availableIndices.length) return;
 
-    const chosenIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    const chosenIndex =
+      availableIndices[Math.floor(Math.random() * availableIndices.length)];
+
     this.reinforcementUsed.add(chosenIndex);
 
     const spawn = this.mapData.reinforcementSpawns[chosenIndex];
@@ -119,6 +134,7 @@ class Game {
 
     document.addEventListener("pointerlockchange", () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
+
       if (!this.pointerLocked && this.running && !this.paused && !this.objective.result) {
         this.pause();
       }
@@ -140,7 +156,9 @@ class Game {
     });
 
     window.addEventListener("mouseup", e => {
-      if (e.button === 0) this.input.fireHeld = false;
+      if (e.button === 0) {
+        this.input.fireHeld = false;
+      }
     });
 
     const startBtn = document.getElementById("start-button");
@@ -167,20 +185,40 @@ class Game {
 
   onKeyDown(e) {
     switch (e.code) {
-      case "KeyW": this.player.input.forward = true; break;
-      case "KeyS": this.player.input.backward = true; break;
-      case "KeyA": this.player.input.left = true; break;
-      case "KeyD": this.player.input.right = true; break;
+      case "KeyW":
+        this.player.input.forward = true;
+        break;
+      case "KeyS":
+        this.player.input.backward = true;
+        break;
+      case "KeyA":
+        this.player.input.left = true;
+        break;
+      case "KeyD":
+        this.player.input.right = true;
+        break;
       case "ShiftLeft":
-      case "ShiftRight": this.player.input.sprint = true; break;
-      case "Space": this.player.input.jump = true; break;
+      case "ShiftRight":
+        this.player.input.sprint = true;
+        break;
+      case "Space":
+        this.player.input.jump = true;
+        break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC": this.player.input.crouch = true; break;
-      case "Digit1": this.player.weaponSystem.switchWeapon("rifle"); break;
-      case "Digit2": this.player.weaponSystem.switchWeapon("pistol"); break;
+      case "KeyC":
+        this.player.input.crouch = true;
+        break;
+      case "Digit1":
+        this.player.weaponSystem.switchWeapon("rifle");
+        break;
+      case "Digit2":
+        this.player.weaponSystem.switchWeapon("pistol");
+        break;
       case "KeyR":
-        if (this.player.weaponSystem.triggerReload()) this.audio.playReload();
+        if (this.player.weaponSystem.triggerReload()) {
+          this.audio.playReload();
+        }
         break;
       case "KeyE":
         this.input.interactHeld = true;
@@ -198,18 +236,36 @@ class Game {
 
   onKeyUp(e) {
     switch (e.code) {
-      case "KeyW": this.player.input.forward = false; break;
-      case "KeyS": this.player.input.backward = false; break;
-      case "KeyA": this.player.input.left = false; break;
-      case "KeyD": this.player.input.right = false; break;
+      case "KeyW":
+        this.player.input.forward = false;
+        break;
+      case "KeyS":
+        this.player.input.backward = false;
+        break;
+      case "KeyA":
+        this.player.input.left = false;
+        break;
+      case "KeyD":
+        this.player.input.right = false;
+        break;
       case "ShiftLeft":
-      case "ShiftRight": this.player.input.sprint = false; break;
-      case "Space": this.player.input.jump = false; break;
+      case "ShiftRight":
+        this.player.input.sprint = false;
+        break;
+      case "Space":
+        this.player.input.jump = false;
+        break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC": this.player.input.crouch = false; break;
-      case "KeyE": this.input.interactHeld = false; break;
-      case "KeyF": this.input.usePressed = false; break;
+      case "KeyC":
+        this.player.input.crouch = false;
+        break;
+      case "KeyE":
+        this.input.interactHeld = false;
+        break;
+      case "KeyF":
+        this.input.usePressed = false;
+        break;
     }
   }
 
@@ -246,6 +302,7 @@ class Game {
 
   update(dt) {
     this.player.update(dt, this.mapData);
+
     this.handleTransfers();
     this.handlePickups();
     this.handleShooting();
@@ -254,8 +311,13 @@ class Game {
 
     if (this.objective.bombPlanted) {
       this.postPlantBeepTimer -= dt;
+
       if (this.postPlantBeepTimer <= 0) {
-        const urgency = Math.max(0.22, this.objective.bombTimer / this.objective.bombDuration);
+        const urgency = Math.max(
+          0.22,
+          this.objective.bombTimer / this.objective.bombDuration
+        );
+
         this.postPlantBeepTimer = THREE.MathUtils.lerp(0.18, 0.9, urgency);
         this.audio.playBombBeep();
       }
@@ -265,6 +327,7 @@ class Game {
         this.reinforcementTimer = 6;
       } else if (this.reinforcementSpawned < this.maxReinforcements) {
         this.reinforcementTimer -= dt;
+
         if (this.reinforcementTimer <= 0) {
           this.spawnReinforcement();
           this.reinforcementTimer = 9 + Math.random() * 8;
@@ -273,7 +336,10 @@ class Game {
     }
 
     if (this.objective.result) {
-      if (this.objective.result.type === "victory") this.audio.playExplosion();
+      if (this.objective.result.type === "victory") {
+        this.audio.playExplosion();
+      }
+
       this.ui.showEnd(this.objective.result.type, this.objective.result.reason);
       this.paused = true;
       document.exitPointerLock();
@@ -285,6 +351,7 @@ class Game {
 
   handleShooting() {
     const gun = this.player.weaponSystem.active;
+
     if (this.player.weaponSystem.reloading) return;
 
     const wantsShot = gun.auto ? this.input.fireHeld : this.firePressedThisFrame;
@@ -326,10 +393,13 @@ class Game {
 
     if (closestEnemy && !enemyBlocked) {
       const enemy = this.resolveEnemyFromObject(closestEnemy.object);
+
       if (enemy && !enemy.dead) {
         const isHeadshot = closestEnemy.point.y > enemy.position.y + 1.45;
         const damage = gun.damage * (isHeadshot ? gun.headshotMultiplier : 1);
+
         enemy.takeDamage(damage);
+
         this.ui.showHitmarker();
         this.ui.flash();
         this.audio.playHit();
@@ -339,16 +409,20 @@ class Game {
         }
       }
     } else if (gun.ammoInMag <= 0 && gun.reserveAmmo > 0) {
-      if (this.player.weaponSystem.triggerReload()) this.audio.playReload();
+      if (this.player.weaponSystem.triggerReload()) {
+        this.audio.playReload();
+      }
     }
   }
 
   resolveEnemyFromObject(object) {
     let current = object;
+
     while (current) {
       if (current.userData?.enemy) return current.userData.enemy;
       current = current.parent;
     }
+
     return null;
   }
 
@@ -412,6 +486,7 @@ class Game {
 
     for (const link of this.mapData.transferLinks) {
       if (link.fromLevel !== this.player.currentLevel) continue;
+
       if (this.player.position.distanceTo(link.fromPos) < 1.65) {
         this.player.teleportTo(link.toPos, link.toLevel);
         break;
@@ -423,12 +498,15 @@ class Game {
 
   getContextPrompt() {
     if (this.objective.shouldShowPlantPrompt(this)) {
-      if (this.player.isMoving()) return "Stop moving, then hold [E] to plant the charge";
+      if (this.player.isMoving()) {
+        return "Stop moving, then hold [E] to plant the charge";
+      }
       return "Hold [E] to plant the charge";
     }
 
     for (const link of this.mapData.transferLinks) {
       if (link.fromLevel !== this.player.currentLevel) continue;
+
       if (this.player.position.distanceTo(link.fromPos) < 1.65) {
         return `[F] ${link.label}`;
       }
@@ -437,6 +515,7 @@ class Game {
     for (const pickup of this.mapData.pickups) {
       if (pickup.collected) continue;
       if (pickup.level !== this.player.currentLevel) continue;
+
       if (this.player.position.distanceTo(pickup.position) < 1.8) {
         if (pickup.type === "ammo") return "Ammo cache";
         if (pickup.type === "medkit") return "Medkit";
@@ -453,21 +532,30 @@ class Game {
       if (pickup.level !== this.player.currentLevel) continue;
 
       pickup.mesh.rotation.y += 0.03;
-      pickup.mesh.position.y = pickup.position.y + 0.35 + Math.sin(performance.now() * 0.004) * 0.06;
+      pickup.mesh.position.y =
+        pickup.position.y + 0.35 + Math.sin(performance.now() * 0.004) * 0.06;
 
       if (this.player.position.distanceTo(pickup.position) < 1.2) {
         pickup.collected = true;
         pickup.mesh.visible = false;
 
-        if (pickup.type === "ammo") this.player.weaponSystem.addAmmoBalanced(45, 16);
-        else if (pickup.type === "medkit") this.player.heal(pickup.amount);
-        else if (pickup.type === "armor") this.player.addArmor(pickup.amount);
+        if (pickup.type === "ammo") {
+          this.player.weaponSystem.addAmmoBalanced(45, 16);
+        } else if (pickup.type === "medkit") {
+          this.player.heal(pickup.amount);
+        } else if (pickup.type === "armor") {
+          this.player.addArmor(pickup.amount);
+        }
       }
     }
   }
 
   findBestTransferLink(fromLevel, toLevel) {
-    return this.mapData.transferLinks.find(link => link.fromLevel === fromLevel && link.toLevel === toLevel) || null;
+    return (
+      this.mapData.transferLinks.find(
+        link => link.fromLevel === fromLevel && link.toLevel === toLevel
+      ) || null
+    );
   }
 
   getTargetLevelForPosition(position) {
