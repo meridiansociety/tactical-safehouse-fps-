@@ -1,8 +1,20 @@
 import * as THREE from "three";
 
+function formatTime(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(rem).padStart(2, "0")}`;
+}
+
+function horizontalDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
 export class ObjectiveManager {
   constructor(bombSite) {
     this.bombSite = bombSite;
+
     this.phase = "infiltration";
     this.missionTime = 15 * 60;
     this.plantDuration = 5.2;
@@ -37,15 +49,19 @@ export class ObjectiveManager {
       return;
     }
 
-    const playerPos = game.player.position;
-    const distanceToSite = playerPos.distanceTo(this.bombSite.position);
-    const onCorrectLevel = game.player.currentLevel === this.bombSite.level;
+    const player = game.player;
+    const distanceToSite = horizontalDistance(player.position, this.bombSite.position);
+    const onCorrectLevel = player.currentLevel === this.bombSite.level;
 
     if (!this.bombPlanted) {
       if (distanceToSite < this.bombSite.radius && onCorrectLevel) {
-        if (game.input.interactHeld && !game.player.isMoving()) {
+        const movementTooHigh = player.isActuallyMoving();
+
+        if (game.input.interactHeld && !movementTooHigh) {
           this.isPlanting = true;
+          this.phase = "planting";
           this.plantProgress += dt / this.plantDuration;
+
           if (this.plantProgress >= 1) {
             this.plantProgress = 1;
             this.startBomb(game);
@@ -58,23 +74,23 @@ export class ObjectiveManager {
       }
     } else {
       this.bombTimer -= dt;
+
       if (this.bombTimer <= 0) {
         this.bombTimer = 0;
-        if (!game.player.dead) {
-          this.result = { type: "victory", reason: "Charge detonated. Objective complete." };
-        } else {
-          this.result = { type: "defeat", reason: "Charge detonated, but you did not survive." };
-        }
+        this.result = game.player.dead
+          ? { type: "defeat", reason: "Charge detonated, but you did not survive." }
+          : { type: "victory", reason: "Charge detonated. Objective complete." };
+        return;
       }
 
       if (this.defusingEnemy) {
         const enemy = this.defusingEnemy;
-        if (
-          enemy.dead ||
-          enemy.position.distanceTo(this.bombSite.position) > 2.25 ||
-          enemy.currentLevel !== this.bombSite.level ||
-          enemy.tookRecentDamage
-        ) {
+        const enemyNearBomb =
+          !enemy.dead &&
+          enemy.currentLevel === this.bombSite.level &&
+          horizontalDistance(enemy.position, this.bombSite.position) <= 2.25;
+
+        if (!enemyNearBomb || enemy.tookRecentDamage) {
           this.interruptDefuse();
         } else {
           this.defuseProgress += dt / this.defuseDuration;
@@ -90,6 +106,7 @@ export class ObjectiveManager {
 
   cancelPlant(dt = 0) {
     this.isPlanting = false;
+    this.phase = this.bombPlanted ? "postPlant" : "interiorAssault";
     this.plantProgress = Math.max(0, this.plantProgress - dt * 1.8);
   }
 
@@ -105,8 +122,8 @@ export class ObjectiveManager {
   startDefuse(enemy) {
     if (!this.bombPlanted) return false;
     if (this.defusingEnemy && this.defusingEnemy !== enemy) return false;
+
     this.defusingEnemy = enemy;
-    this.defuseProgress = Math.max(this.defuseProgress, 0);
     return true;
   }
 
@@ -119,7 +136,7 @@ export class ObjectiveManager {
     if (this.bombPlanted) return false;
     return (
       game.player.currentLevel === this.bombSite.level &&
-      game.player.position.distanceTo(this.bombSite.position) < this.bombSite.radius
+      horizontalDistance(game.player.position, this.bombSite.position) < this.bombSite.radius
     );
   }
 
@@ -137,11 +154,4 @@ export class ObjectiveManager {
   formatBombTime() {
     return formatTime(this.bombTimer);
   }
-}
-
-function formatTime(seconds) {
-  const s = Math.max(0, Math.floor(seconds));
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(rem).padStart(2, "0")}`;
 }
