@@ -178,18 +178,36 @@ class Game {
 
   onKeyDown(e) {
     switch (e.code) {
-      case "KeyW": this.player.input.forward = true; break;
-      case "KeyS": this.player.input.backward = true; break;
-      case "KeyA": this.player.input.left = true; break;
-      case "KeyD": this.player.input.right = true; break;
+      case "KeyW":
+        this.player.input.forward = true;
+        break;
+      case "KeyS":
+        this.player.input.backward = true;
+        break;
+      case "KeyA":
+        this.player.input.left = true;
+        break;
+      case "KeyD":
+        this.player.input.right = true;
+        break;
       case "ShiftLeft":
-      case "ShiftRight": this.player.input.sprint = true; break;
-      case "Space": this.player.input.jump = true; break;
+      case "ShiftRight":
+        this.player.input.sprint = true;
+        break;
+      case "Space":
+        this.player.input.jump = true;
+        break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC": this.player.input.crouch = true; break;
-      case "Digit1": this.player.weaponSystem.switchWeapon("rifle"); break;
-      case "Digit2": this.player.weaponSystem.switchWeapon("pistol"); break;
+      case "KeyC":
+        this.player.input.crouch = true;
+        break;
+      case "Digit1":
+        this.player.weaponSystem.switchWeapon("rifle");
+        break;
+      case "Digit2":
+        this.player.weaponSystem.switchWeapon("pistol");
+        break;
       case "KeyR":
         if (this.player.weaponSystem.triggerReload()) this.audio.playReload();
         break;
@@ -209,18 +227,36 @@ class Game {
 
   onKeyUp(e) {
     switch (e.code) {
-      case "KeyW": this.player.input.forward = false; break;
-      case "KeyS": this.player.input.backward = false; break;
-      case "KeyA": this.player.input.left = false; break;
-      case "KeyD": this.player.input.right = false; break;
+      case "KeyW":
+        this.player.input.forward = false;
+        break;
+      case "KeyS":
+        this.player.input.backward = false;
+        break;
+      case "KeyA":
+        this.player.input.left = false;
+        break;
+      case "KeyD":
+        this.player.input.right = false;
+        break;
       case "ShiftLeft":
-      case "ShiftRight": this.player.input.sprint = false; break;
-      case "Space": this.player.input.jump = false; break;
+      case "ShiftRight":
+        this.player.input.sprint = false;
+        break;
+      case "Space":
+        this.player.input.jump = false;
+        break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC": this.player.input.crouch = false; break;
-      case "KeyE": this.input.interactHeld = false; break;
-      case "KeyF": this.input.usePressed = false; break;
+      case "KeyC":
+        this.player.input.crouch = false;
+        break;
+      case "KeyE":
+        this.input.interactHeld = false;
+        break;
+      case "KeyF":
+        this.input.usePressed = false;
+        break;
     }
   }
 
@@ -312,14 +348,21 @@ class Game {
         if (this.player.weaponSystem.triggerReload()) {
           this.audio.playReload();
         }
+      } else if (gun.ammoInMag <= 0) {
+        this.audio.playDryFire();
       }
       return;
     }
 
+    const nextAmmo = gun.ammoInMag - 1;
     this.player.weaponSystem.consumeShot();
 
     if (gun.id === "rifle") this.audio.playRifle();
     else this.audio.playPistol();
+
+    if (nextAmmo <= gun.lowAmmoThreshold && nextAmmo > 0) {
+      this.audio.playLowAmmo();
+    }
 
     this.alertEnemiesAt(this.player.position, 22);
 
@@ -397,6 +440,9 @@ class Game {
       const dist = Math.hypot(enemy.position.x - position.x, enemy.position.z - position.z);
       if (dist <= radius) {
         enemy.alertTo(position, forceAttack);
+        if (forceAttack) {
+          this.audio.playEnemyAlert();
+        }
       }
     }
   }
@@ -404,6 +450,7 @@ class Game {
   damagePlayer(amount) {
     this.player.takeDamage(amount);
     this.ui.damage(amount);
+    this.audio.playDamage();
   }
 
   hasLineOfSight(from, to) {
