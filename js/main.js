@@ -323,9 +323,11 @@ class Game {
 
     this.alertEnemiesAt(this.player.position, 22);
 
-    const spreadBase = this.player.input.crouch
-      ? gun.spreadCrouch
-      : (this.player.isActuallyMoving() ? gun.spreadMove : gun.spreadHip);
+    const spreadBase = this.player.weaponSystem.getSpread({
+      moving: this.player.isActuallyMoving(),
+      crouching: this.player.input.crouch,
+      ads: false
+    });
 
     const direction = new THREE.Vector3();
     this.camera.getWorldDirection(direction);
