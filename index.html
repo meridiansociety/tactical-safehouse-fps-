@@ -1,1 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operation Black Pine</title>
+  <link rel="stylesheet" href="style.css" />
+  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="game-root">
+    <canvas id="game-canvas"></canvas>
 
+    <div id="hud">
+      <div id="top-bar">
+        <div class="hud-panel">
+          <div class="label">OBJECTIVE</div>
+          <div id="objective-text">Infiltrate the compound and plant the charge.</div>
+        </div>
+        <div class="hud-panel right-compact">
+          <div class="mini-stat">
+            <span class="label">TIME</span>
+            <span id="mission-timer">15:00</span>
+          </div>
+          <div class="mini-stat">
+            <span class="label">ENEMIES</span>
+            <span id="enemy-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="center-ui">
+        <div id="crosshair"></div>
+        <div id="hitmarker"></div>
+
+        <div id="interact-prompt" class="hidden"></div>
+
+        <div id="progress-wrapper" class="hidden">
+          <div id="progress-label">PLANTING</div>
+          <div id="progress-bar">
+            <div id="progress-fill"></div>
+          </div>
+        </div>
+
+        <div id="defuse-alert" class="hidden">ENEMY DEFUSING</div>
+      </div>
+
+      <div id="bottom-bar">
+        <div class="hud-panel player-panel">
+          <div class="player-stat">
+            <span class="label">HEALTH</span>
+            <span id="health-value">100</span>
+          </div>
+          <div class="player-stat">
+            <span class="label">ARMOR</span>
+            <span id="armor-value">50</span>
+          </div>
+          <div class="player-stat">
+            <span class="label">WEAPON</span>
+            <span id="weapon-name">Rifle</span>
+          </div>
+          <div class="player-stat">
+            <span class="label">AMMO</span>
+            <span id="ammo-value">30 / 120</span>
+          </div>
+        </div>
+
+        <div class="hud-panel right-panel">
+          <div id="bomb-status">Charge not planted</div>
+          <div id="bomb-timer" class="hidden">00:00</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="damage-vignette"></div>
+    <div id="flash-overlay"></div>
+
+    <div id="menu-overlay" class="overlay visible">
+      <div class="menu-card">
+        <h1>Operation Black Pine</h1>
+        <p class="subtitle">
+          Assault a hidden forest safehouse, plant the charge in the intelligence room,
+          and survive until detonation.
+        </p>
+
+        <div class="mission-brief">
+          <h2>Mission</h2>
+          <p>
+            A fortified modern safehouse is hidden inside a remote woodland compound.
+            Fight through outer patrols, breach the house, plant the bomb at the hardpoint,
+            then hold the site against defenders and reinforcements.
+          </p>
+
+          <h2>Controls</h2>
+          <ul>
+            <li><strong>WASD</strong> Move</li>
+            <li><strong>Mouse</strong> Look</li>
+            <li><strong>Shift</strong> Sprint</li>
+            <li><strong>Space</strong> Jump</li>
+            <li><strong>Ctrl / C</strong> Crouch</li>
+            <li><strong>Left Click</strong> Fire</li>
+            <li><strong>R</strong> Reload</li>
+            <li><strong>1 / 2</strong> Switch Weapon</li>
+            <li><strong>E</strong> Hold to plant</li>
+            <li><strong>F</strong> Use stairs / floor transfer points</li>
+            <li><strong>Esc</strong> Pause</li>
+          </ul>
+        </div>
+
+        <button id="start-button">Start Mission</button>
+      </div>
+    </div>
+
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="menu-card small">
+        <h2>Paused</h2>
+        <p>Press <strong>Esc</strong> to resume.</p>
+        <button id="resume-button">Resume</button>
+        <button id="restart-button">Restart</button>
+      </div>
+    </div>
+
+    <div id="end-overlay" class="overlay hidden">
+      <div class="menu-card small">
+        <h2 id="end-title">Mission Complete</h2>
+        <p id="end-message"></p>
+        <button id="end-restart-button">Restart Mission</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
