@@ -58,6 +58,18 @@ export class Player {
     return this.input.crouch ? this.eyeOffsetCrouched : this.eyeOffsetStanding;
   }
 
+  getHorizontalSpeed() {
+    return Math.hypot(this.velocity.x, this.velocity.z);
+  }
+
+  isMoving() {
+    return this.input.forward || this.input.backward || this.input.left || this.input.right;
+  }
+
+  isActuallyMoving() {
+    return this.getHorizontalSpeed() > 0.45;
+  }
+
   setLevel(level) {
     this.currentLevel = level;
     this.position.y = this.levelHeights[level];
@@ -89,10 +101,6 @@ export class Player {
     return right;
   }
 
-  isMoving() {
-    return this.input.forward || this.input.backward || this.input.left || this.input.right;
-  }
-
   update(dt, mapData) {
     if (this.dead) return;
 
@@ -101,7 +109,7 @@ export class Player {
     const targetHeight = this.input.crouch ? this.heightCrouched : this.heightStanding;
     this.height = THREE.MathUtils.lerp(this.height, targetHeight, 12 * dt);
 
-    let moveDir = new THREE.Vector3();
+    const moveDir = new THREE.Vector3();
 
     if (this.input.forward) moveDir.add(this.getForwardVector());
     if (this.input.backward) moveDir.sub(this.getForwardVector());
@@ -155,7 +163,11 @@ export class Player {
   }
 
   syncCamera() {
-    this.camera.position.set(this.position.x, this.position.y + this.eyeHeight, this.position.z);
+    this.camera.position.set(
+      this.position.x,
+      this.position.y + this.eyeHeight,
+      this.position.z
+    );
     this.camera.rotation.order = "YXZ";
     this.camera.rotation.y = this.yaw;
     this.camera.rotation.x = this.pitch;
@@ -182,7 +194,7 @@ export class Player {
         if (this.velocity.x > 0) nextPos.x = expandedMinX;
         else if (this.velocity.x < 0) nextPos.x = expandedMaxX;
         this.velocity.x = 0;
-      } else if (axis === "z") {
+      } else {
         if (this.velocity.z > 0) nextPos.z = expandedMinZ;
         else if (this.velocity.z < 0) nextPos.z = expandedMaxZ;
         this.velocity.z = 0;
