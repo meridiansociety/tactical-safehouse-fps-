@@ -25,6 +25,12 @@ function pushCollider(colliders, x, z, w, d, level) {
 }
 
 export function buildMap(scene) {
+  const levelHeights = {
+    0: -4,
+    1: 0,
+    2: 6
+  };
+
   const map = {
     colliders: [],
     obstacleMeshes: [],
@@ -32,56 +38,49 @@ export function buildMap(scene) {
     transferLinks: [],
     enemySpawns: [],
     reinforcementSpawns: [],
-    playerSpawn: new THREE.Vector3(-54, 0, 36),
+    playerSpawn: new THREE.Vector3(-54, levelHeights[1], 36),
     bombSite: {
-      position: new THREE.Vector3(6, 6, -1),
+      position: new THREE.Vector3(6, levelHeights[1], -1),
       level: 1,
       radius: 2.2
     },
-    levelHeights: {
-      0: -4,
-      1: 0,
-      2: 6
-    }
+    levelHeights
   };
 
   const floorY = map.levelHeights;
 
-  // Ground
   const ground = addBox(scene, 0, -1.5, 0, 220, 1, 220, 0x43503d, { roughness: 1 });
   ground.receiveShadow = true;
-  map.obstacleMeshes.push(ground);
 
-  // Access road
-  const road = addBox(scene, -25, -1.0, 28, 84, 0.2, 10, 0x66625e, { roughness: 1 });
-  road.rotation.y = -0.18;
-  map.obstacleMeshes.push(road);
+  addBox(scene, -25, -1.0, 28, 84, 0.2, 10, 0x66625e, { roughness: 1 }).rotation.y = -0.18;
 
-  // Forest
   const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 1 });
   const treeLeavesMat = new THREE.MeshStandardMaterial({ color: 0x264a2e, roughness: 1 });
   const rockMat = new THREE.MeshStandardMaterial({ color: 0x6d7278, roughness: 1 });
 
-  const treePositions = [];
   for (let i = 0; i < 90; i++) {
     const x = (Math.random() - 0.5) * 190;
     const z = (Math.random() - 0.5) * 190;
     if (Math.abs(x) < 30 && Math.abs(z) < 24) continue;
-    treePositions.push([x, z]);
-  }
 
-  for (const [x, z] of treePositions) {
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.38, 5.2, 8), treeTrunkMat);
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28, 0.38, 5.2, 8),
+      treeTrunkMat
+    );
     trunk.position.set(x, 1.1, z);
     trunk.castShadow = true;
     scene.add(trunk);
     map.obstacleMeshes.push(trunk);
+
     map.colliders.push({
       min: new THREE.Vector3(x - 0.75, 0, z - 0.75),
       max: new THREE.Vector3(x + 0.75, 0, z + 0.75)
     });
 
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(2.6, 5.6, 8), treeLeavesMat);
+    const crown = new THREE.Mesh(
+      new THREE.ConeGeometry(2.6, 5.6, 8),
+      treeLeavesMat
+    );
     crown.position.set(x, 5.9, z);
     crown.castShadow = true;
     scene.add(crown);
@@ -90,6 +89,7 @@ export function buildMap(scene) {
   for (let i = 0; i < 18; i++) {
     const x = -70 + Math.random() * 140;
     const z = -70 + Math.random() * 140;
+
     const rock = new THREE.Mesh(
       new THREE.DodecahedronGeometry(1 + Math.random() * 1.3),
       rockMat
@@ -100,14 +100,19 @@ export function buildMap(scene) {
     rock.receiveShadow = true;
     scene.add(rock);
     map.obstacleMeshes.push(rock);
+
     map.colliders.push({
       min: new THREE.Vector3(x - 1.8, 0, z - 1.8),
       max: new THREE.Vector3(x + 1.8, 0, z + 1.8)
     });
   }
 
-  // Compound fence / perimeter
-  const fenceMat = new THREE.MeshStandardMaterial({ color: 0x747f86, roughness: 0.9, metalness: 0.2 });
+  const fenceMat = new THREE.MeshStandardMaterial({
+    color: 0x747f86,
+    roughness: 0.9,
+    metalness: 0.2
+  });
+
   const fenceSegments = [
     { x: 0, z: -30, w: 70, d: 1.2 },
     { x: 0, z: 30, w: 70, d: 1.2 },
@@ -139,7 +144,6 @@ export function buildMap(scene) {
     }
   }
 
-  // Courtyard props
   const courtyardProps = [
     { x: -18, z: 7, w: 4, h: 2, d: 2.4, c: 0x52606b },
     { x: -10, z: -6, w: 5, h: 1.4, d: 2.2, c: 0x7e7769 },
@@ -149,19 +153,17 @@ export function buildMap(scene) {
     { x: -22, z: 15, w: 5.5, h: 1.2, d: 1.5, c: 0x90886d }
   ];
 
-  courtyardProps.forEach(p => {
+  for (const p of courtyardProps) {
     const mesh = addBox(scene, p.x, p.h / 2, p.z, p.w, p.h, p.d, p.c, { castShadow: true });
     map.obstacleMeshes.push(mesh);
     pushCollider(map.colliders, p.x, p.z, p.w, p.d);
-  });
+  }
 
-  // Side shed
   const shedBody = addBox(scene, 26, 2.2, 18, 8, 4.4, 7, 0x52616e);
   const shedRoof = addBox(scene, 26, 4.9, 18, 9, 1.2, 8, 0x2f3841);
   map.obstacleMeshes.push(shedBody, shedRoof);
   pushCollider(map.colliders, 26, 18, 8, 7);
 
-  // House shell
   const houseX = 0;
   const houseZ = 0;
   const houseW = 28;
@@ -176,36 +178,29 @@ export function buildMap(scene) {
     pushCollider(map.colliders, x, z, w, d, level);
   }
 
-  // Main floor outer walls
   addWall(1, houseX, houseZ - houseD / 2, houseW, wallThickness);
   addWall(1, houseX - houseW / 2, houseZ, wallThickness, houseD);
   addWall(1, houseX + houseW / 2, houseZ, wallThickness, houseD);
-
-  // Front wall split for door gap
   addWall(1, -9, houseD / 2, 10, wallThickness);
   addWall(1, 9, houseD / 2, 10, wallThickness);
 
-  // Top floor outer walls
   addWall(2, houseX, houseZ - houseD / 2, houseW, wallThickness, 0x767d86);
   addWall(2, houseX - houseW / 2, houseZ, wallThickness, houseD, 0x767d86);
   addWall(2, houseX + houseW / 2, houseZ, wallThickness, houseD, 0x767d86);
   addWall(2, -9, houseD / 2, 10, wallThickness, 0x767d86);
   addWall(2, 9, houseD / 2, 10, wallThickness, 0x767d86);
 
-  // Basement perimeter
   addWall(0, houseX, houseZ - houseD / 2, houseW, wallThickness, 0x67615c);
   addWall(0, houseX - houseW / 2, houseZ, wallThickness, houseD, 0x67615c);
   addWall(0, houseX + houseW / 2, houseZ, wallThickness, houseD, 0x67615c);
   addWall(0, houseX, houseZ + houseD / 2, houseW, wallThickness, 0x67615c);
 
-  // Floors / ceilings / roof
   const mainFloorSlab = addBox(scene, houseX, floorY[1] - 0.4, houseZ, houseW, 0.8, houseD, 0x7d7b74, { roughness: 1 });
   const topFloorSlab = addBox(scene, houseX, floorY[2] - 0.4, houseZ, houseW, 0.8, houseD, 0x6f6c64, { roughness: 1 });
   const basementSlab = addBox(scene, houseX, floorY[0] - 0.4, houseZ, houseW, 0.8, houseD, 0x54514c, { roughness: 1 });
   const roof = addBox(scene, houseX, floorY[2] + storyHeight - 0.4, houseZ, houseW + 2, 0.8, houseD + 2, 0x3a4048, { roughness: 1 });
   map.obstacleMeshes.push(mainFloorSlab, topFloorSlab, basementSlab, roof);
 
-  // Basement exterior access bunker corridor
   const bunkerShell = addBox(scene, -18, -1.2, -18, 6, 5.6, 8, 0x5f676f);
   const bunkerFloor = addBox(scene, -12, -4.4, -14, 8, 0.8, 4, 0x4f4d48);
   const tunnel = addBox(scene, -13.5, -1.8, -11, 1, 4.8, 6, 0x72756f);
@@ -215,11 +210,9 @@ export function buildMap(scene) {
   addInteriorWallsMain(scene, map, floorY[1]);
   addInteriorWallsTop(scene, map, floorY[2]);
   addInteriorWallsBasement(scene, map, floorY[0]);
-
   addHouseProps(scene, map, floorY);
   addWindows(scene, floorY);
 
-  // Floor transfer links
   map.transferLinks = [
     {
       fromLevel: 1,
@@ -265,7 +258,6 @@ export function buildMap(scene) {
     }
   ];
 
-  // Pickups
   map.pickups.push(
     { type: "ammo", amount: 1, level: 1, position: new THREE.Vector3(-9, floorY[1], 4) },
     { type: "medkit", amount: 28, level: 1, position: new THREE.Vector3(11, floorY[1], 8) },
@@ -277,11 +269,9 @@ export function buildMap(scene) {
 
   for (const pickup of map.pickups) {
     const color =
-      pickup.type === "ammo"
-        ? 0xffd966
-        : pickup.type === "medkit"
-          ? 0x7dffb0
-          : 0x7dc8ff;
+      pickup.type === "ammo" ? 0xffd966 :
+      pickup.type === "medkit" ? 0x7dffb0 :
+      0x7dc8ff;
 
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 0.7, 0.7),
@@ -297,7 +287,6 @@ export function buildMap(scene) {
     pickup.mesh = mesh;
   }
 
-  // Enemy spawns
   map.enemySpawns = [
     {
       position: new THREE.Vector3(-28, floorY[1], 24),
@@ -431,27 +420,22 @@ function addInteriorWallsBasement(scene, map, y) {
 
 function addHouseProps(scene, map, floorY) {
   const props = [
-    // Main floor living room
     { x: -9, y: floorY[1] + 0.75, z: 7, w: 5.8, h: 1.5, d: 2.2, c: 0x5e6a74, level: 1 },
     { x: -4, y: floorY[1] + 0.55, z: 8.5, w: 2.2, h: 1.1, d: 1.2, c: 0x7b756a, level: 1 },
     { x: -11, y: floorY[1] + 0.9, z: 1, w: 2.2, h: 1.8, d: 1.6, c: 0x6c706e, level: 1 },
 
-    // Office / bomb room
     { x: 0.4, y: floorY[1] + 0.8, z: -5.5, w: 3.2, h: 1.6, d: 1.4, c: 0x464f57, level: 1 },
     { x: -2, y: floorY[1] + 0.5, z: -8, w: 2.2, h: 1, d: 1.2, c: 0x7a7268, level: 1 },
 
-    // Kitchen / utility
     { x: 13, y: floorY[1] + 0.7, z: 8, w: 3.5, h: 1.4, d: 1.6, c: 0x757b82, level: 1 },
     { x: 13, y: floorY[1] + 0.7, z: 4.2, w: 3.5, h: 1.4, d: 1.6, c: 0x757b82, level: 1 },
     { x: 12.4, y: floorY[1] + 1.2, z: -4, w: 4.4, h: 2.4, d: 2, c: 0x5c6670, level: 1 },
 
-    // Top floor rooms
     { x: -12, y: floorY[2] + 0.75, z: 7, w: 2.4, h: 1.5, d: 2, c: 0x58626f, level: 2 },
     { x: -11, y: floorY[2] + 0.5, z: -3.5, w: 3.2, h: 1, d: 1.4, c: 0x766d63, level: 2 },
     { x: 10.5, y: floorY[2] + 0.75, z: 7, w: 3.2, h: 1.5, d: 2.2, c: 0x58626f, level: 2 },
     { x: 10.5, y: floorY[2] + 0.7, z: -2, w: 2.5, h: 1.4, d: 1.8, c: 0x7f776d, level: 2 },
 
-    // Basement cover
     { x: -12, y: floorY[0] + 0.8, z: 5.5, w: 2.5, h: 1.6, d: 2.2, c: 0x5f6468, level: 0 },
     { x: 11.5, y: floorY[0] + 0.9, z: 2, w: 3.4, h: 1.8, d: 2.2, c: 0x64605b, level: 0 },
     { x: 3.5, y: floorY[0] + 0.8, z: -6.2, w: 3.8, h: 1.6, d: 1.6, c: 0x717882, level: 0 }
@@ -463,7 +447,6 @@ function addHouseProps(scene, map, floorY) {
     pushCollider(map.colliders, p.x, p.z, p.w, p.d, p.level);
   }
 
-  // Bomb hardpoint visual
   const bombPad = new THREE.Mesh(
     new THREE.CylinderGeometry(0.7, 0.7, 0.12, 20),
     new THREE.MeshStandardMaterial({
@@ -508,9 +491,9 @@ function addWindows(scene, floorY) {
     [13.55, floorY[2] + 2.6, 4, 0.08, 2.2, 3]
   ];
 
-  windows.forEach(([x, y, z, w, h, d]) => {
+  for (const [x, y, z, w, h, d] of windows) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), glassMat);
     mesh.position.set(x, y, z);
     scene.add(mesh);
-  });
+  }
 }
