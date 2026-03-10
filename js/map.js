@@ -47,14 +47,17 @@ export function buildMap(scene) {
 
   const floorY = map.levelHeights;
 
-  // Lights and atmosphere anchors happen in main, but map provides geometry.
+  // Ground
   const ground = addBox(scene, 0, -1.5, 0, 220, 1, 220, 0x43503d, { roughness: 1 });
   ground.receiveShadow = true;
+  map.obstacleMeshes.push(ground);
 
+  // Access road
   const road = addBox(scene, -25, -1.0, 28, 84, 0.2, 10, 0x66625e, { roughness: 1 });
   road.rotation.y = -0.18;
+  map.obstacleMeshes.push(road);
 
-  // Forest: trees, rocks, brush clusters
+  // Forest
   const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 1 });
   const treeLeavesMat = new THREE.MeshStandardMaterial({ color: 0x264a2e, roughness: 1 });
   const rockMat = new THREE.MeshStandardMaterial({ color: 0x6d7278, roughness: 1 });
@@ -103,7 +106,7 @@ export function buildMap(scene) {
     });
   }
 
-  // Compound walls and fence
+  // Compound fence / perimeter
   const fenceMat = new THREE.MeshStandardMaterial({ color: 0x747f86, roughness: 0.9, metalness: 0.2 });
   const fenceSegments = [
     { x: 0, z: -30, w: 70, d: 1.2 },
@@ -119,7 +122,6 @@ export function buildMap(scene) {
     mesh.material = fenceMat;
     map.obstacleMeshes.push(mesh);
 
-    // Leave a front gate opening and a side breach.
     const skipFrontGate = seg.z === 30 && seg.w === 70;
     const skipSideBreach = seg.x === -35 && seg.d === 60;
 
@@ -137,7 +139,7 @@ export function buildMap(scene) {
     }
   }
 
-  // Courtyard objects
+  // Courtyard props
   const courtyardProps = [
     { x: -18, z: 7, w: 4, h: 2, d: 2.4, c: 0x52606b },
     { x: -10, z: -6, w: 5, h: 1.4, d: 2.2, c: 0x7e7769 },
@@ -153,12 +155,13 @@ export function buildMap(scene) {
     pushCollider(map.colliders, p.x, p.z, p.w, p.d);
   });
 
-  // Small side shed
-  addBox(scene, 26, 2.2, 18, 8, 4.4, 7, 0x52616e);
-  addBox(scene, 26, 4.9, 18, 9, 1.2, 8, 0x2f3841);
+  // Side shed
+  const shedBody = addBox(scene, 26, 2.2, 18, 8, 4.4, 7, 0x52616e);
+  const shedRoof = addBox(scene, 26, 4.9, 18, 9, 1.2, 8, 0x2f3841);
+  map.obstacleMeshes.push(shedBody, shedRoof);
   pushCollider(map.colliders, 26, 18, 8, 7);
 
-  // House shell dimensions
+  // House shell
   const houseX = 0;
   const houseZ = 0;
   const houseW = 28;
@@ -166,7 +169,6 @@ export function buildMap(scene) {
   const wallThickness = 0.8;
   const storyHeight = 6;
 
-  // Exterior shell walls, floor 1 and 2 visible
   function addWall(level, x, z, w, d, color = 0x7d838b) {
     const y = floorY[level] + storyHeight / 2;
     const mesh = addBox(scene, x, y, z, w, storyHeight, d, color, { castShadow: true });
@@ -174,27 +176,21 @@ export function buildMap(scene) {
     pushCollider(map.colliders, x, z, w, d, level);
   }
 
-  // MAIN FLOOR OUTER WALLS with openings
-  addWall(1, houseX, houseZ - houseD / 2, houseW, wallThickness); // north
-  addWall(1, houseX - houseW / 2, houseZ, wallThickness, houseD); // west
-  addWall(1, houseX + houseW / 2, houseZ, wallThickness, houseD); // east
+  // Main floor outer walls
+  addWall(1, houseX, houseZ - houseD / 2, houseW, wallThickness);
+  addWall(1, houseX - houseW / 2, houseZ, wallThickness, houseD);
+  addWall(1, houseX + houseW / 2, houseZ, wallThickness, houseD);
 
-  // south wall split for front door
+  // Front wall split for door gap
   addWall(1, -9, houseD / 2, 10, wallThickness);
   addWall(1, 9, houseD / 2, 10, wallThickness);
 
-  // top floor walls
+  // Top floor outer walls
   addWall(2, houseX, houseZ - houseD / 2, houseW, wallThickness, 0x767d86);
   addWall(2, houseX - houseW / 2, houseZ, wallThickness, houseD, 0x767d86);
   addWall(2, houseX + houseW / 2, houseZ, wallThickness, houseD, 0x767d86);
   addWall(2, -9, houseD / 2, 10, wallThickness, 0x767d86);
   addWall(2, 9, houseD / 2, 10, wallThickness, 0x767d86);
-
-  // Floors and roof
-  addBox(scene, houseX, floorY[1] - 0.4, houseZ, houseW, 0.8, houseD, 0x7d7b74, { roughness: 1 });
-  addBox(scene, houseX, floorY[2] - 0.4, houseZ, houseW, 0.8, houseD, 0x6f6c64, { roughness: 1 });
-  addBox(scene, houseX, floorY[0] - 0.4, houseZ, houseW, 0.8, houseD, 0x54514c, { roughness: 1 });
-  addBox(scene, houseX, floorY[2] + storyHeight - 0.4, houseZ, houseW + 2, 0.8, houseD + 2, 0x3a4048, { roughness: 1 });
 
   // Basement perimeter
   addWall(0, houseX, houseZ - houseD / 2, houseW, wallThickness, 0x67615c);
@@ -202,26 +198,28 @@ export function buildMap(scene) {
   addWall(0, houseX + houseW / 2, houseZ, wallThickness, houseD, 0x67615c);
   addWall(0, houseX, houseZ + houseD / 2, houseW, wallThickness, 0x67615c);
 
-  // Basement exterior access bunker corridor
-  addBox(scene, -18, -1.2, -18, 6, 5.6, 8, 0x5f676f);
-  pushCollider(map.colliders, -18, -18, 6, 8);
-  addBox(scene, -12, -4.4, -14, 8, 0.8, 4, 0x4f4d48);
-  const tunnel = addBox(scene, -13.5, -1.8, -11, 1, 4.8, 6, 0x72756f);
-  map.obstacleMeshes.push(tunnel);
+  // Floors / ceilings / roof
+  const mainFloorSlab = addBox(scene, houseX, floorY[1] - 0.4, houseZ, houseW, 0.8, houseD, 0x7d7b74, { roughness: 1 });
+  const topFloorSlab = addBox(scene, houseX, floorY[2] - 0.4, houseZ, houseW, 0.8, houseD, 0x6f6c64, { roughness: 1 });
+  const basementSlab = addBox(scene, houseX, floorY[0] - 0.4, houseZ, houseW, 0.8, houseD, 0x54514c, { roughness: 1 });
+  const roof = addBox(scene, houseX, floorY[2] + storyHeight - 0.4, houseZ, houseW + 2, 0.8, houseD + 2, 0x3a4048, { roughness: 1 });
+  map.obstacleMeshes.push(mainFloorSlab, topFloorSlab, basementSlab, roof);
 
-  // Main floor rooms
-  // living room (front left), office/bomb site (center), kitchen (front right), utility/rear
+  // Basement exterior access bunker corridor
+  const bunkerShell = addBox(scene, -18, -1.2, -18, 6, 5.6, 8, 0x5f676f);
+  const bunkerFloor = addBox(scene, -12, -4.4, -14, 8, 0.8, 4, 0x4f4d48);
+  const tunnel = addBox(scene, -13.5, -1.8, -11, 1, 4.8, 6, 0x72756f);
+  map.obstacleMeshes.push(bunkerShell, bunkerFloor, tunnel);
+  pushCollider(map.colliders, -18, -18, 6, 8);
+
   addInteriorWallsMain(scene, map, floorY[1]);
   addInteriorWallsTop(scene, map, floorY[2]);
   addInteriorWallsBasement(scene, map, floorY[0]);
 
-  // Furniture and clutter
   addHouseProps(scene, map, floorY);
-
-  // Windows as visible glass strips only, no collision so they matter for firing.
   addWindows(scene, floorY);
 
-  // Stair / floor transfer points
+  // Floor transfer links
   map.transferLinks = [
     {
       fromLevel: 1,
@@ -278,7 +276,13 @@ export function buildMap(scene) {
   );
 
   for (const pickup of map.pickups) {
-    const color = pickup.type === "ammo" ? 0xffd966 : pickup.type === "medkit" ? 0x7dffb0 : 0x7dc8ff;
+    const color =
+      pickup.type === "ammo"
+        ? 0xffd966
+        : pickup.type === "medkit"
+          ? 0x7dffb0
+          : 0x7dc8ff;
+
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 0.7, 0.7),
       new THREE.MeshStandardMaterial({
@@ -372,64 +376,57 @@ function addInteriorWallsMain(scene, map, y) {
   const thickness = 0.6;
   const height = 6;
 
-  // Center office/hardpoint room
-  addBox(scene, 2.8, y + 3, -6, 0.6, height, 9.5, wallColor);
-  pushCollider(map.colliders, 2.8, -6, 0.6, 9.5, 1);
+  const walls = [
+    { x: 2.8, z: -6, w: 0.6, d: 9.5 },
+    { x: -5.8, z: -6, w: 0.6, d: 9.5 },
+    { x: -1.5, z: -10.5, w: 8.6, d: thickness },
+    { x: 0, z: 2.8, w: 16, d: thickness },
+    { x: 9.2, z: 2.8, w: 0.6, d: 17.2 },
+    { x: -10.2, z: -2, w: 0.6, d: 8 },
+    { x: -8, z: -5.8, w: 4.4, d: 0.6 }
+  ];
 
-  addBox(scene, -5.8, y + 3, -6, 0.6, height, 9.5, wallColor);
-  pushCollider(map.colliders, -5.8, -6, 0.6, 9.5, 1);
-
-  addBox(scene, -1.5, y + 3, -10.5, 8.6, height, thickness, wallColor);
-  pushCollider(map.colliders, -1.5, -10.5, 8.6, thickness, 1);
-
-  // Front room divider
-  addBox(scene, 0, y + 3, 2.8, 16, height, thickness, wallColor);
-  pushCollider(map.colliders, 0, 2.8, 16, thickness, 1);
-
-  // Rear utility divider
-  addBox(scene, 9.2, y + 3, 2.8, 0.6, height, 17.2, wallColor);
-  pushCollider(map.colliders, 9.2, 2.8, 0.6, 17.2, 1);
-
-  // Hallway pocket walls
-  addBox(scene, -10.2, y + 3, -2, 0.6, height, 8, wallColor);
-  pushCollider(map.colliders, -10.2, -2, 0.6, 8, 1);
-
-  addBox(scene, -8, y + 3, -5.8, 4.4, height, 0.6, wallColor);
-  pushCollider(map.colliders, -8, -5.8, 4.4, 0.6, 1);
+  for (const wall of walls) {
+    const mesh = addBox(scene, wall.x, y + 3, wall.z, wall.w, height, wall.d, wallColor);
+    map.obstacleMeshes.push(mesh);
+    pushCollider(map.colliders, wall.x, wall.z, wall.w, wall.d, 1);
+  }
 }
 
 function addInteriorWallsTop(scene, map, y) {
   const wallColor = 0x7c8088;
   const height = 6;
 
-  addBox(scene, 0, y + 3, 2.5, 20, height, 0.6, wallColor);
-  pushCollider(map.colliders, 0, 2.5, 20, 0.6, 2);
+  const walls = [
+    { x: 0, z: 2.5, w: 20, d: 0.6 },
+    { x: -8.5, z: -2.5, w: 0.6, d: 16 },
+    { x: 8.5, z: -2.5, w: 0.6, d: 16 },
+    { x: 0, z: -7.4, w: 16.5, d: 0.6 }
+  ];
 
-  addBox(scene, -8.5, y + 3, -2.5, 0.6, height, 16, wallColor);
-  pushCollider(map.colliders, -8.5, -2.5, 0.6, 16, 2);
-
-  addBox(scene, 8.5, y + 3, -2.5, 0.6, height, 16, wallColor);
-  pushCollider(map.colliders, 8.5, -2.5, 0.6, 16, 2);
-
-  addBox(scene, 0, y + 3, -7.4, 16.5, height, 0.6, wallColor);
-  pushCollider(map.colliders, 0, -7.4, 16.5, 0.6, 2);
+  for (const wall of walls) {
+    const mesh = addBox(scene, wall.x, y + 3, wall.z, wall.w, height, wall.d, wallColor);
+    map.obstacleMeshes.push(mesh);
+    pushCollider(map.colliders, wall.x, wall.z, wall.w, wall.d, 2);
+  }
 }
 
 function addInteriorWallsBasement(scene, map, y) {
   const wallColor = 0x66615d;
   const height = 6;
 
-  addBox(scene, 0, y + 3, -1.5, 18, height, 0.6, wallColor);
-  pushCollider(map.colliders, 0, -1.5, 18, 0.6, 0);
+  const walls = [
+    { x: 0, z: -1.5, w: 18, d: 0.6 },
+    { x: -8.5, z: 4.5, w: 0.6, d: 11 },
+    { x: 8.5, z: 3.5, w: 0.6, d: 13 },
+    { x: -2, z: 7.5, w: 13, d: 0.6 }
+  ];
 
-  addBox(scene, -8.5, y + 3, 4.5, 0.6, height, 11, wallColor);
-  pushCollider(map.colliders, -8.5, 4.5, 0.6, 11, 0);
-
-  addBox(scene, 8.5, y + 3, 3.5, 0.6, height, 13, wallColor);
-  pushCollider(map.colliders, 8.5, 3.5, 0.6, 13, 0);
-
-  addBox(scene, -2, y + 3, 7.5, 13, height, 0.6, wallColor);
-  pushCollider(map.colliders, -2, 7.5, 13, 0.6, 0);
+  for (const wall of walls) {
+    const mesh = addBox(scene, wall.x, y + 3, wall.z, wall.w, height, wall.d, wallColor);
+    map.obstacleMeshes.push(mesh);
+    pushCollider(map.colliders, wall.x, wall.z, wall.w, wall.d, 0);
+  }
 }
 
 function addHouseProps(scene, map, floorY) {
@@ -461,7 +458,8 @@ function addHouseProps(scene, map, floorY) {
   ];
 
   for (const p of props) {
-    addBox(scene, p.x, p.y, p.z, p.w, p.h, p.d, p.c, { castShadow: true });
+    const mesh = addBox(scene, p.x, p.y, p.z, p.w, p.h, p.d, p.c, { castShadow: true });
+    map.obstacleMeshes.push(mesh);
     pushCollider(map.colliders, p.x, p.z, p.w, p.d, p.level);
   }
 
