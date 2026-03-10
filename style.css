@@ -1,1 +1,355 @@
+:root {
+  --bg: #081018;
+  --panel: rgba(7, 14, 22, 0.78);
+  --panel-border: rgba(142, 195, 255, 0.18);
+  --accent: #9fd0ff;
+  --accent-strong: #36a1ff;
+  --danger: #ff5e66;
+  --warning: #ffd966;
+  --success: #80ffbe;
+  --text: #eaf3ff;
+  --muted: #aab9c8;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
 
+* {
+  box-sizing: border-box;
+}
+
+html, body, #game-root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, Arial, sans-serif;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#top-bar,
+#bottom-bar {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#top-bar {
+  top: 16px;
+  align-items: flex-start;
+}
+
+#bottom-bar {
+  bottom: 16px;
+  align-items: flex-end;
+}
+
+.hud-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.right-compact {
+  display: flex;
+  gap: 12px;
+}
+
+.mini-stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 94px;
+}
+
+.player-panel {
+  display: flex;
+  gap: 18px;
+  min-width: 460px;
+}
+
+.right-panel {
+  min-width: 220px;
+  text-align: right;
+}
+
+.player-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#objective-text,
+#bomb-status,
+#bomb-timer,
+#mission-timer,
+#enemy-count,
+#health-value,
+#armor-value,
+#weapon-name,
+#ammo-value {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+#bomb-timer {
+  margin-top: 4px;
+  font-size: 24px;
+  color: var(--warning);
+}
+
+#center-ui {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#crosshair {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+#crosshair::before {
+  width: 2px;
+  height: 18px;
+  left: 8px;
+  top: 0;
+}
+
+#crosshair::after {
+  width: 18px;
+  height: 2px;
+  left: 0;
+  top: 8px;
+}
+
+#hitmarker {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.08s ease, transform 0.08s ease;
+}
+
+#hitmarker.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#hitmarker::before,
+#hitmarker::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%) center/50% 50% no-repeat,
+    linear-gradient(-45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%) center/50% 50% no-repeat;
+}
+
+#interact-prompt {
+  position: absolute;
+  bottom: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  text-align: center;
+  background: rgba(7, 14, 22, 0.85);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+#progress-wrapper {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+}
+
+#progress-label {
+  margin-bottom: 6px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--warning);
+}
+
+#progress-bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+#progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-strong), var(--success));
+}
+
+#defuse-alert {
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(80, 5, 5, 0.9);
+  border: 1px solid rgba(255, 120, 120, 0.25);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #ffe8ea;
+}
+
+#damage-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, transparent 52%, rgba(255, 0, 0, 0.22) 100%);
+  opacity: 0;
+  transition: opacity 0.08s linear;
+}
+
+#flash-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 0;
+  transition: opacity 0.08s linear;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 12, 0.72);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.overlay.visible {
+  display: flex;
+}
+
+.menu-card {
+  width: min(760px, 94vw);
+  background: rgba(8, 18, 28, 0.92);
+  border: 1px solid rgba(159, 208, 255, 0.16);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 30px;
+}
+
+.menu-card.small {
+  width: min(440px, 94vw);
+}
+
+.menu-card h1,
+.menu-card h2 {
+  margin-top: 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.mission-brief {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 22px 0;
+}
+
+.mission-brief p,
+.mission-brief li {
+  color: #d8e6f3;
+  line-height: 1.55;
+}
+
+button {
+  pointer-events: auto;
+  appearance: none;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #4ab0ff, #1773c7);
+  color: white;
+  padding: 14px 18px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-right: 10px;
+  box-shadow: 0 10px 24px rgba(23, 115, 199, 0.35);
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .mission-brief {
+    grid-template-columns: 1fr;
+  }
+
+  .player-panel {
+    min-width: unset;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  #top-bar,
+  #bottom-bar {
+    left: 10px;
+    right: 10px;
+  }
+
+  .hud-panel {
+    padding: 10px 12px;
+  }
+}
