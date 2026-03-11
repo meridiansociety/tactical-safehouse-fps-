@@ -353,3 +353,7 @@ button:hover {
     padding: 10px 12px;
   }
 }
+#boot-overlay {
+  pointer-events: auto;
+  cursor: pointer;
+}
