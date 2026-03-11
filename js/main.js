@@ -21,8 +21,8 @@ class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x90a4b1);
-    this.scene.fog = new THREE.Fog(0x90a4b1, 28, 135);
+    this.scene.background = new THREE.Color(0xb8d2e8);
+    this.scene.fog = new THREE.Fog(0xb8d2e8, 45, 180);
 
     this.camera = new THREE.PerspectiveCamera(
       80,
@@ -59,6 +59,12 @@ class Game {
       this.mapData.levelHeights
     );
     this.player.setLevel(1);
+
+    // Face compound on load
+    const lookTarget = new THREE.Vector3(0, this.player.position.y, 0);
+    const toTarget = new THREE.Vector3().subVectors(lookTarget, this.player.position);
+    this.player.yaw = Math.atan2(-toTarget.x, -toTarget.z);
+    this.player.pitch = -0.05;
     this.player.syncCamera();
 
     this.objective = new ObjectiveManager(this.mapData.bombSite);
@@ -101,6 +107,19 @@ class Game {
     const officeLight = new THREE.PointLight(0xa6d8ff, 0.75, 40);
     officeLight.position.set(0, 3.8, -6);
     this.scene.add(officeLight);
+
+    // Visible diagnostic marker near approach
+    const marker = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 6, 2),
+      new THREE.MeshStandardMaterial({
+        color: 0xffaa33,
+        emissive: 0x442200,
+        emissiveIntensity: 0.35
+      })
+    );
+    marker.position.set(-48, 3, 28);
+    marker.castShadow = true;
+    this.scene.add(marker);
   }
 
   spawnInitialEnemies() {
@@ -139,6 +158,7 @@ class Game {
 
     document.addEventListener("pointerlockchange", () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
+      console.log("[Operation Black Pine] pointer lock:", this.pointerLocked);
 
       if (this.pointerLocked && this.clickBanner) {
         this.clickBanner.classList.add("hidden");
@@ -149,6 +169,10 @@ class Game {
       }
     });
 
+    document.addEventListener("pointerlockerror", () => {
+      console.warn("[Operation Black Pine] pointer lock error");
+    });
+
     document.addEventListener("mousemove", e => {
       if (!this.pointerLocked || !this.running || this.paused) return;
       this.player.handleMouseMove(e);
@@ -157,10 +181,11 @@ class Game {
     window.addEventListener("keydown", e => this.onKeyDown(e));
     window.addEventListener("keyup", e => this.onKeyUp(e));
 
+    // FIRST CLICK ANYWHERE starts interaction
+    document.addEventListener("click", this.handleFirstDocumentClick, { once: true });
+
     window.addEventListener("mousedown", e => {
-      if (!this.startedInteraction) {
-        this.beginInteraction();
-      }
+      if (!this.startedInteraction) return;
 
       if (e.button === 0) {
         this.input.fireHeld = true;
@@ -177,22 +202,28 @@ class Game {
     document.getElementById("end-restart-button").addEventListener("click", () => window.location.reload());
 
     this.canvas.addEventListener("click", () => {
-      if (!this.startedInteraction) {
-        this.beginInteraction();
-        return;
-      }
-
       if (this.running && !this.paused && !this.pointerLocked && !this.objective.result) {
         this.requestPointerLockSafely();
       }
     });
   }
 
+  handleFirstDocumentClick = () => {
+    console.log("[Operation Black Pine] first document click received");
+    this.beginInteraction();
+  };
+
   beginInteraction() {
+    if (this.startedInteraction) return;
+
     this.startedInteraction = true;
     this.audio.unlock();
+
+    if (this.clickBanner) {
+      this.clickBanner.classList.add("hidden");
+    }
+
     this.requestPointerLockSafely();
-    if (this.clickBanner) this.clickBanner.classList.add("hidden");
   }
 
   onKeyDown(e) {
@@ -247,9 +278,11 @@ class Game {
     try {
       const result = this.canvas.requestPointerLock();
       if (result && typeof result.catch === "function") {
-        result.catch(() => {});
+        result.catch(err => console.warn("[Operation Black Pine] pointer lock rejected", err));
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn("[Operation Black Pine] pointer lock threw", err);
+    }
   }
 
   pause() {
@@ -257,7 +290,7 @@ class Game {
     document.exitPointerLock();
     this.ui.showPause(true);
     if (this.clickBanner && !this.objective.result) {
-      this.clickBanner.textContent = "Paused. Press Resume or click the game to re-lock the mouse.";
+      this.clickBanner.textContent = "Paused. Click the page or press Resume to continue.";
       this.clickBanner.classList.remove("hidden");
     }
   }
