@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "../vendor/three.module.js";
 import { buildMap } from "./map.js";
 import { Player } from "./player.js";
 import { EnemyAI } from "./ai.js";
