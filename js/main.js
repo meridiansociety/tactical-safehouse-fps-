@@ -10,7 +10,6 @@ class Game {
   constructor() {
     this.canvas = document.getElementById("game-canvas");
     this.bootOverlay = document.getElementById("boot-overlay");
-    this.bootMessage = document.getElementById("boot-message");
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -33,9 +32,10 @@ class Game {
     );
 
     this.clock = new THREE.Clock();
-    this.running = false;
+    this.running = true;
     this.paused = false;
     this.pointerLocked = false;
+    this.startedInteraction = false;
 
     this.postPlantBeepTimer = 0;
     this.reinforcementTimer = 0;
@@ -43,7 +43,6 @@ class Game {
     this.maxReinforcements = 4;
     this.firePressedThisFrame = false;
     this.reinforcementUsed = new Set();
-
     this.dryFireCooldown = 0;
 
     this.input = {
@@ -72,10 +71,9 @@ class Game {
     this.setupSceneLighting();
     this.spawnInitialEnemies();
     this.bindEvents();
-    this.beginAutoStartCountdown();
     this.animate();
 
-    console.log("[Operation Black Pine] Game booted.");
+    console.log("[Operation Black Pine] GitHub Pages build booted.");
   }
 
   setupSceneLighting() {
@@ -132,37 +130,6 @@ class Game {
     this.reinforcementSpawned += 1;
   }
 
-  beginAutoStartCountdown() {
-    let remaining = 5;
-
-    if (this.bootMessage) {
-      this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
-    }
-
-    const interval = setInterval(() => {
-      remaining -= 1;
-
-      if (remaining > 0) {
-        if (this.bootMessage) {
-          this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
-        }
-      } else {
-        clearInterval(interval);
-        if (this.bootMessage) {
-          this.bootMessage.textContent = "Mission live. Click inside the game window if mouse capture is needed.";
-        }
-        this.start();
-
-        setTimeout(() => {
-          if (this.bootOverlay) {
-            this.bootOverlay.classList.remove("visible");
-            this.bootOverlay.classList.add("hidden");
-          }
-        }, 700);
-      }
-    }, 1000);
-  }
-
   bindEvents() {
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -173,13 +140,9 @@ class Game {
     document.addEventListener("pointerlockchange", () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
 
-      if (!this.pointerLocked && this.running && !this.paused && !this.objective.result) {
+      if (!this.pointerLocked && this.startedInteraction && this.running && !this.paused && !this.objective.result) {
         this.pause();
       }
-    });
-
-    document.addEventListener("pointerlockerror", () => {
-      console.warn("[Operation Black Pine] Pointer lock request failed.");
     });
 
     document.addEventListener("mousemove", e => {
@@ -191,6 +154,10 @@ class Game {
     window.addEventListener("keyup", e => this.onKeyUp(e));
 
     window.addEventListener("mousedown", e => {
+      if (!this.startedInteraction) {
+        this.beginInteraction();
+      }
+
       if (e.button === 0) {
         this.input.fireHeld = true;
         this.firePressedThisFrame = true;
@@ -206,10 +173,26 @@ class Game {
     document.getElementById("end-restart-button").addEventListener("click", () => window.location.reload());
 
     this.canvas.addEventListener("click", () => {
+      if (!this.startedInteraction) {
+        this.beginInteraction();
+        return;
+      }
+
       if (this.running && !this.paused && !this.pointerLocked && !this.objective.result) {
         this.requestPointerLockSafely();
       }
     });
+  }
+
+  beginInteraction() {
+    this.startedInteraction = true;
+    this.audio.unlock();
+    this.requestPointerLockSafely();
+
+    if (this.bootOverlay) {
+      this.bootOverlay.classList.remove("visible");
+      this.bootOverlay.classList.add("hidden");
+    }
   }
 
   onKeyDown(e) {
@@ -264,20 +247,9 @@ class Game {
     try {
       const result = this.canvas.requestPointerLock();
       if (result && typeof result.catch === "function") {
-        result.catch(err => {
-          console.warn("[Operation Black Pine] Pointer lock rejected:", err);
-        });
+        result.catch(() => {});
       }
-    } catch (err) {
-      console.warn("[Operation Black Pine] Pointer lock threw:", err);
-    }
-  }
-
-  start() {
-    this.running = true;
-    this.paused = false;
-    this.audio.unlock();
-    this.requestPointerLockSafely();
+    } catch (_) {}
   }
 
   pause() {
@@ -351,8 +323,9 @@ class Game {
   }
 
   handleShooting() {
-    const gun = this.player.weaponSystem.active;
+    if (!this.startedInteraction) return;
 
+    const gun = this.player.weaponSystem.active;
     if (this.player.weaponSystem.reloading) return;
 
     const wantsShot = gun.auto ? this.input.fireHeld : this.firePressedThisFrame;
@@ -360,9 +333,7 @@ class Game {
 
     if (!this.player.weaponSystem.canFire()) {
       if (gun.ammoInMag <= 0 && gun.reserveAmmo > 0) {
-        if (this.player.weaponSystem.triggerReload()) {
-          this.audio.playReload();
-        }
+        if (this.player.weaponSystem.triggerReload()) this.audio.playReload();
       } else if (gun.ammoInMag <= 0 && this.dryFireCooldown <= 0) {
         this.audio.playDryFire();
         this.dryFireCooldown = 0.16;
@@ -376,9 +347,7 @@ class Game {
     if (gun.id === "rifle") this.audio.playRifle();
     else this.audio.playPistol();
 
-    const isLowAmmoNow =
-      gun.ammoInMag <= gun.lowAmmoThreshold && gun.ammoInMag > 0;
-
+    const isLowAmmoNow = gun.ammoInMag <= gun.lowAmmoThreshold && gun.ammoInMag > 0;
     if (!wasLowAmmo && isLowAmmoNow) {
       this.audio.playLowAmmo();
     }
@@ -473,7 +442,7 @@ class Game {
   damagePlayer(amount) {
     this.player.takeDamage(amount);
     this.ui.damage(amount);
-    this.audio.playDamage();
+    if (this.startedInteraction) this.audio.playDamage();
   }
 
   hasLineOfSight(from, to) {
@@ -619,7 +588,7 @@ function showFatalBootError(error) {
   if (endTitle) endTitle.textContent = "Boot Error";
   if (endMessage) {
     endMessage.textContent =
-      "The game failed to initialize. Open DevTools Console to see the exact error.";
+      "The game failed to initialize. Open the browser console on GitHub Pages to see the exact error.";
   }
 
   if (endOverlay) {
