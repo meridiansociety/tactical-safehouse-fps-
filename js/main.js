@@ -9,8 +9,7 @@ import { AudioManager } from "./audio.js";
 class Game {
   constructor() {
     this.canvas = document.getElementById("game-canvas");
-    this.bootOverlay = document.getElementById("boot-overlay");
-    this.bootMessage = document.getElementById("boot-message");
+    this.clickBanner = document.getElementById("click-banner");
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -72,10 +71,9 @@ class Game {
     this.setupSceneLighting();
     this.spawnInitialEnemies();
     this.bindEvents();
-    this.beginAutoStartCountdown();
     this.animate();
 
-    console.log("[Operation Black Pine] GitHub Pages build booted.");
+    console.log("[Operation Black Pine] Boot complete.");
   }
 
   setupSceneLighting() {
@@ -132,30 +130,6 @@ class Game {
     this.reinforcementSpawned += 1;
   }
 
-  beginAutoStartCountdown() {
-    let remaining = 5;
-
-    if (this.bootMessage) {
-      this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
-    }
-
-    const interval = setInterval(() => {
-      remaining -= 1;
-
-      if (remaining > 0) {
-        if (this.bootMessage) {
-          this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
-        }
-      } else {
-        clearInterval(interval);
-        if (this.bootMessage) {
-          this.bootMessage.textContent =
-            "Mission loaded. Click anywhere on this overlay to begin.";
-        }
-      }
-    }, 1000);
-  }
-
   bindEvents() {
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -165,6 +139,10 @@ class Game {
 
     document.addEventListener("pointerlockchange", () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
+
+      if (this.pointerLocked && this.clickBanner) {
+        this.clickBanner.classList.add("hidden");
+      }
 
       if (!this.pointerLocked && this.startedInteraction && this.running && !this.paused && !this.objective.result) {
         this.pause();
@@ -179,18 +157,10 @@ class Game {
     window.addEventListener("keydown", e => this.onKeyDown(e));
     window.addEventListener("keyup", e => this.onKeyUp(e));
 
-    // CLICK THE OVERLAY TO START
-    if (this.bootOverlay) {
-      this.bootOverlay.style.pointerEvents = "auto";
-      this.bootOverlay.addEventListener("click", () => {
-        if (!this.startedInteraction) {
-          this.beginInteraction();
-        }
-      });
-    }
-
     window.addEventListener("mousedown", e => {
-      if (!this.startedInteraction) return;
+      if (!this.startedInteraction) {
+        this.beginInteraction();
+      }
 
       if (e.button === 0) {
         this.input.fireHeld = true;
@@ -221,13 +191,8 @@ class Game {
   beginInteraction() {
     this.startedInteraction = true;
     this.audio.unlock();
-
-    if (this.bootOverlay) {
-      this.bootOverlay.classList.remove("visible");
-      this.bootOverlay.classList.add("hidden");
-    }
-
     this.requestPointerLockSafely();
+    if (this.clickBanner) this.clickBanner.classList.add("hidden");
   }
 
   onKeyDown(e) {
@@ -291,12 +256,17 @@ class Game {
     this.paused = true;
     document.exitPointerLock();
     this.ui.showPause(true);
+    if (this.clickBanner && !this.objective.result) {
+      this.clickBanner.textContent = "Paused. Press Resume or click the game to re-lock the mouse.";
+      this.clickBanner.classList.remove("hidden");
+    }
   }
 
   resume() {
     this.paused = false;
     this.ui.showPause(false);
     this.requestPointerLockSafely();
+    if (this.clickBanner) this.clickBanner.classList.add("hidden");
   }
 
   animate = () => {
@@ -315,7 +285,6 @@ class Game {
     if (this.dryFireCooldown > 0) this.dryFireCooldown -= dt;
 
     this.player.update(dt, this.mapData);
-
     this.handleTransfers();
     this.handlePickups();
     this.handleShooting();
@@ -613,12 +582,6 @@ function showFatalBootError(error) {
   const endOverlay = document.getElementById("end-overlay");
   const endTitle = document.getElementById("end-title");
   const endMessage = document.getElementById("end-message");
-  const bootOverlay = document.getElementById("boot-overlay");
-
-  if (bootOverlay) {
-    bootOverlay.classList.add("hidden");
-    bootOverlay.classList.remove("visible");
-  }
 
   if (endTitle) endTitle.textContent = "Boot Error";
   if (endMessage) {
