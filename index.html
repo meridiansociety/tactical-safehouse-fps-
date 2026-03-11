@@ -5,15 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Operation Black Pine</title>
   <link rel="stylesheet" href="style.css" />
-
-  <script async src="./vendor/es-module-shims.js"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three.module.js"
-      }
-    }
-  </script>
 </head>
 <body>
   <div id="game-root">
@@ -23,7 +14,7 @@
       <div id="top-bar">
         <div class="hud-panel">
           <div class="label">OBJECTIVE</div>
-          <div id="objective-text">Mission initializing...</div>
+          <div id="objective-text">Infiltrate the compound and plant the charge.</div>
         </div>
         <div class="hud-panel right-compact">
           <div class="mini-stat">
@@ -87,10 +78,7 @@
       <div class="menu-card small">
         <h2>Operation Black Pine</h2>
         <p id="boot-message">
-          Mission loading. Infiltration will begin in 5 seconds.
-        </p>
-        <p>
-          Once the mission starts, click inside the game window if your browser asks for pointer lock.
+          Mission loaded. Click anywhere inside the game to capture the mouse and begin.
         </p>
       </div>
     </div>
