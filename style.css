@@ -357,3 +357,22 @@ button:hover {
   pointer-events: auto;
   cursor: pointer;
 }
+#click-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  background: rgba(8, 18, 28, 0.9);
+  border: 1px solid rgba(159, 208, 255, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  padding: 12px 16px;
+  color: #eaf3ff;
+  font-weight: 700;
+  z-index: 20;
+  pointer-events: none;
+}
+
+#click-banner.hidden {
+  display: none;
+}
