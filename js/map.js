@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "../vendor/three.module.js";
 
 function addBox(scene, x, y, z, w, h, d, color, opts = {}) {
   const mesh = new THREE.Mesh(
