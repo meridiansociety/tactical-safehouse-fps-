@@ -42,6 +42,10 @@ class Game {
     this.firePressedThisFrame = false;
     this.reinforcementUsed = new Set();
 
+    this.dryFireCooldown = 0;
+    this.lastLowAmmoState = {};
+    this.hasStartedOnce = false;
+
     this.input = {
       fireHeld: false,
       interactHeld: false,
@@ -69,6 +73,8 @@ class Game {
     this.spawnInitialEnemies();
     this.bindEvents();
     this.animate();
+
+    console.log("[Operation Black Pine] Game booted.");
   }
 
   setupSceneLighting() {
@@ -140,6 +146,10 @@ class Game {
       }
     });
 
+    document.addEventListener("pointerlockerror", () => {
+      console.warn("[Operation Black Pine] Pointer lock request failed.");
+    });
+
     document.addEventListener("mousemove", e => {
       if (!this.pointerLocked || !this.running || this.paused) return;
       this.player.handleMouseMove(e);
@@ -160,6 +170,7 @@ class Game {
     });
 
     document.getElementById("start-button").addEventListener("click", () => {
+      console.log("[Operation Black Pine] Start button clicked.");
       document.getElementById("menu-overlay").classList.remove("visible");
       document.getElementById("menu-overlay").classList.add("hidden");
       this.start();
@@ -171,43 +182,25 @@ class Game {
 
     this.canvas.addEventListener("click", () => {
       if (this.running && !this.paused && !this.pointerLocked && !this.objective.result) {
-        this.canvas.requestPointerLock();
+        this.requestPointerLockSafely();
       }
     });
   }
 
   onKeyDown(e) {
     switch (e.code) {
-      case "KeyW":
-        this.player.input.forward = true;
-        break;
-      case "KeyS":
-        this.player.input.backward = true;
-        break;
-      case "KeyA":
-        this.player.input.left = true;
-        break;
-      case "KeyD":
-        this.player.input.right = true;
-        break;
+      case "KeyW": this.player.input.forward = true; break;
+      case "KeyS": this.player.input.backward = true; break;
+      case "KeyA": this.player.input.left = true; break;
+      case "KeyD": this.player.input.right = true; break;
       case "ShiftLeft":
-      case "ShiftRight":
-        this.player.input.sprint = true;
-        break;
-      case "Space":
-        this.player.input.jump = true;
-        break;
+      case "ShiftRight": this.player.input.sprint = true; break;
+      case "Space": this.player.input.jump = true; break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC":
-        this.player.input.crouch = true;
-        break;
-      case "Digit1":
-        this.player.weaponSystem.switchWeapon("rifle");
-        break;
-      case "Digit2":
-        this.player.weaponSystem.switchWeapon("pistol");
-        break;
+      case "KeyC": this.player.input.crouch = true; break;
+      case "Digit1": this.player.weaponSystem.switchWeapon("rifle"); break;
+      case "Digit2": this.player.weaponSystem.switchWeapon("pistol"); break;
       case "KeyR":
         if (this.player.weaponSystem.triggerReload()) this.audio.playReload();
         break;
@@ -227,44 +220,40 @@ class Game {
 
   onKeyUp(e) {
     switch (e.code) {
-      case "KeyW":
-        this.player.input.forward = false;
-        break;
-      case "KeyS":
-        this.player.input.backward = false;
-        break;
-      case "KeyA":
-        this.player.input.left = false;
-        break;
-      case "KeyD":
-        this.player.input.right = false;
-        break;
+      case "KeyW": this.player.input.forward = false; break;
+      case "KeyS": this.player.input.backward = false; break;
+      case "KeyA": this.player.input.left = false; break;
+      case "KeyD": this.player.input.right = false; break;
       case "ShiftLeft":
-      case "ShiftRight":
-        this.player.input.sprint = false;
-        break;
-      case "Space":
-        this.player.input.jump = false;
-        break;
+      case "ShiftRight": this.player.input.sprint = false; break;
+      case "Space": this.player.input.jump = false; break;
       case "ControlLeft":
       case "ControlRight":
-      case "KeyC":
-        this.player.input.crouch = false;
-        break;
-      case "KeyE":
-        this.input.interactHeld = false;
-        break;
-      case "KeyF":
-        this.input.usePressed = false;
-        break;
+      case "KeyC": this.player.input.crouch = false; break;
+      case "KeyE": this.input.interactHeld = false; break;
+      case "KeyF": this.input.usePressed = false; break;
+    }
+  }
+
+  requestPointerLockSafely() {
+    try {
+      const result = this.canvas.requestPointerLock();
+      if (result && typeof result.catch === "function") {
+        result.catch(err => {
+          console.warn("[Operation Black Pine] Pointer lock rejected:", err);
+        });
+      }
+    } catch (err) {
+      console.warn("[Operation Black Pine] Pointer lock threw:", err);
     }
   }
 
   start() {
     this.running = true;
     this.paused = false;
+    this.hasStartedOnce = true;
     this.audio.unlock();
-    this.canvas.requestPointerLock();
+    this.requestPointerLockSafely();
   }
 
   pause() {
@@ -276,7 +265,7 @@ class Game {
   resume() {
     this.paused = false;
     this.ui.showPause(false);
-    this.canvas.requestPointerLock();
+    this.requestPointerLockSafely();
   }
 
   animate = () => {
@@ -292,6 +281,8 @@ class Game {
   };
 
   update(dt) {
+    if (this.dryFireCooldown > 0) this.dryFireCooldown -= dt;
+
     this.player.update(dt, this.mapData);
 
     this.handleTransfers();
@@ -348,19 +339,23 @@ class Game {
         if (this.player.weaponSystem.triggerReload()) {
           this.audio.playReload();
         }
-      } else if (gun.ammoInMag <= 0) {
+      } else if (gun.ammoInMag <= 0 && this.dryFireCooldown <= 0) {
         this.audio.playDryFire();
+        this.dryFireCooldown = 0.16;
       }
       return;
     }
 
-    const nextAmmo = gun.ammoInMag - 1;
+    const wasLowAmmo = gun.ammoInMag <= gun.lowAmmoThreshold;
     this.player.weaponSystem.consumeShot();
 
     if (gun.id === "rifle") this.audio.playRifle();
     else this.audio.playPistol();
 
-    if (nextAmmo <= gun.lowAmmoThreshold && nextAmmo > 0) {
+    const isLowAmmoNow =
+      gun.ammoInMag <= gun.lowAmmoThreshold && gun.ammoInMag > 0;
+
+    if (!wasLowAmmo && isLowAmmoNow) {
       this.audio.playLowAmmo();
     }
 
@@ -433,6 +428,8 @@ class Game {
   }
 
   alertEnemiesAt(position, radius, forceAttack = false) {
+    let playedAlertSound = false;
+
     for (const enemy of this.enemies) {
       if (enemy.dead) continue;
       if (enemy.currentLevel !== this.player.currentLevel && !this.objective.bombPlanted) continue;
@@ -440,8 +437,10 @@ class Game {
       const dist = Math.hypot(enemy.position.x - position.x, enemy.position.z - position.z);
       if (dist <= radius) {
         enemy.alertTo(position, forceAttack);
-        if (forceAttack) {
+
+        if (forceAttack && !playedAlertSound) {
           this.audio.playEnemyAlert();
+          playedAlertSound = true;
         }
       }
     }
@@ -580,4 +579,33 @@ class Game {
   }
 }
 
-new Game();
+function showFatalBootError(error) {
+  console.error("[Operation Black Pine] Fatal boot error:", error);
+
+  const endOverlay = document.getElementById("end-overlay");
+  const endTitle = document.getElementById("end-title");
+  const endMessage = document.getElementById("end-message");
+  const menuOverlay = document.getElementById("menu-overlay");
+
+  if (menuOverlay) {
+    menuOverlay.classList.add("hidden");
+    menuOverlay.classList.remove("visible");
+  }
+
+  if (endTitle) endTitle.textContent = "Boot Error";
+  if (endMessage) {
+    endMessage.textContent =
+      "The game failed to initialize. Open DevTools Console to see the exact error. If you launched the game by double-clicking index.html, run it through a local server instead.";
+  }
+
+  if (endOverlay) {
+    endOverlay.classList.remove("hidden");
+    endOverlay.classList.add("visible");
+  }
+}
+
+try {
+  new Game();
+} catch (error) {
+  showFatalBootError(error);
+}
