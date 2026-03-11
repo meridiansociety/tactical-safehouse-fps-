@@ -9,6 +9,8 @@ import { AudioManager } from "./audio.js";
 class Game {
   constructor() {
     this.canvas = document.getElementById("game-canvas");
+    this.bootOverlay = document.getElementById("boot-overlay");
+    this.bootMessage = document.getElementById("boot-message");
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -43,8 +45,6 @@ class Game {
     this.reinforcementUsed = new Set();
 
     this.dryFireCooldown = 0;
-    this.lastLowAmmoState = {};
-    this.hasStartedOnce = false;
 
     this.input = {
       fireHeld: false,
@@ -72,6 +72,7 @@ class Game {
     this.setupSceneLighting();
     this.spawnInitialEnemies();
     this.bindEvents();
+    this.beginAutoStartCountdown();
     this.animate();
 
     console.log("[Operation Black Pine] Game booted.");
@@ -131,6 +132,37 @@ class Game {
     this.reinforcementSpawned += 1;
   }
 
+  beginAutoStartCountdown() {
+    let remaining = 5;
+
+    if (this.bootMessage) {
+      this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
+    }
+
+    const interval = setInterval(() => {
+      remaining -= 1;
+
+      if (remaining > 0) {
+        if (this.bootMessage) {
+          this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
+        }
+      } else {
+        clearInterval(interval);
+        if (this.bootMessage) {
+          this.bootMessage.textContent = "Mission live. Click inside the game window if mouse capture is needed.";
+        }
+        this.start();
+
+        setTimeout(() => {
+          if (this.bootOverlay) {
+            this.bootOverlay.classList.remove("visible");
+            this.bootOverlay.classList.add("hidden");
+          }
+        }, 700);
+      }
+    }, 1000);
+  }
+
   bindEvents() {
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -167,13 +199,6 @@ class Game {
 
     window.addEventListener("mouseup", e => {
       if (e.button === 0) this.input.fireHeld = false;
-    });
-
-    document.getElementById("start-button").addEventListener("click", () => {
-      console.log("[Operation Black Pine] Start button clicked.");
-      document.getElementById("menu-overlay").classList.remove("visible");
-      document.getElementById("menu-overlay").classList.add("hidden");
-      this.start();
     });
 
     document.getElementById("resume-button").addEventListener("click", () => this.resume());
@@ -251,7 +276,6 @@ class Game {
   start() {
     this.running = true;
     this.paused = false;
-    this.hasStartedOnce = true;
     this.audio.unlock();
     this.requestPointerLockSafely();
   }
@@ -585,17 +609,17 @@ function showFatalBootError(error) {
   const endOverlay = document.getElementById("end-overlay");
   const endTitle = document.getElementById("end-title");
   const endMessage = document.getElementById("end-message");
-  const menuOverlay = document.getElementById("menu-overlay");
+  const bootOverlay = document.getElementById("boot-overlay");
 
-  if (menuOverlay) {
-    menuOverlay.classList.add("hidden");
-    menuOverlay.classList.remove("visible");
+  if (bootOverlay) {
+    bootOverlay.classList.add("hidden");
+    bootOverlay.classList.remove("visible");
   }
 
   if (endTitle) endTitle.textContent = "Boot Error";
   if (endMessage) {
     endMessage.textContent =
-      "The game failed to initialize. Open DevTools Console to see the exact error. If you launched the game by double-clicking index.html, run it through a local server instead.";
+      "The game failed to initialize. Open DevTools Console to see the exact error.";
   }
 
   if (endOverlay) {
