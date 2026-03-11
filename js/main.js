@@ -10,6 +10,7 @@ class Game {
   constructor() {
     this.canvas = document.getElementById("game-canvas");
     this.bootOverlay = document.getElementById("boot-overlay");
+    this.bootMessage = document.getElementById("boot-message");
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -71,6 +72,7 @@ class Game {
     this.setupSceneLighting();
     this.spawnInitialEnemies();
     this.bindEvents();
+    this.beginAutoStartCountdown();
     this.animate();
 
     console.log("[Operation Black Pine] GitHub Pages build booted.");
@@ -130,6 +132,30 @@ class Game {
     this.reinforcementSpawned += 1;
   }
 
+  beginAutoStartCountdown() {
+    let remaining = 5;
+
+    if (this.bootMessage) {
+      this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
+    }
+
+    const interval = setInterval(() => {
+      remaining -= 1;
+
+      if (remaining > 0) {
+        if (this.bootMessage) {
+          this.bootMessage.textContent = `Mission loading. Infiltration will begin in ${remaining} seconds.`;
+        }
+      } else {
+        clearInterval(interval);
+        if (this.bootMessage) {
+          this.bootMessage.textContent =
+            "Mission loaded. Click anywhere on this overlay to begin.";
+        }
+      }
+    }, 1000);
+  }
+
   bindEvents() {
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -153,10 +179,18 @@ class Game {
     window.addEventListener("keydown", e => this.onKeyDown(e));
     window.addEventListener("keyup", e => this.onKeyUp(e));
 
+    // CLICK THE OVERLAY TO START
+    if (this.bootOverlay) {
+      this.bootOverlay.style.pointerEvents = "auto";
+      this.bootOverlay.addEventListener("click", () => {
+        if (!this.startedInteraction) {
+          this.beginInteraction();
+        }
+      });
+    }
+
     window.addEventListener("mousedown", e => {
-      if (!this.startedInteraction) {
-        this.beginInteraction();
-      }
+      if (!this.startedInteraction) return;
 
       if (e.button === 0) {
         this.input.fireHeld = true;
@@ -187,12 +221,13 @@ class Game {
   beginInteraction() {
     this.startedInteraction = true;
     this.audio.unlock();
-    this.requestPointerLockSafely();
 
     if (this.bootOverlay) {
       this.bootOverlay.classList.remove("visible");
       this.bootOverlay.classList.add("hidden");
     }
+
+    this.requestPointerLockSafely();
   }
 
   onKeyDown(e) {
