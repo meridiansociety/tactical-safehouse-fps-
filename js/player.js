@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "../vendor/three.module.js";
 import { WeaponSystem } from "./weapon.js";
 
 function clamp(value, min, max) {
